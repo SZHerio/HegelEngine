@@ -2,6 +2,6 @@
 
 int main()
 {
-    engine::core::Application app;
-    app.Run();
+    HegelEngine::core::Application app;
+    app.run();
 }
