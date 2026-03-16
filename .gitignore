@@ -1,0 +1,13 @@
+/build/
+/out/
+/bin/
+/obj/
+/.vs/
+/.idea/
+/.vscode/
+CMakeCache.txt
+CMakeFiles/
+*.sln
+*.vcxproj
+*.vcxproj.filters
+*.user
