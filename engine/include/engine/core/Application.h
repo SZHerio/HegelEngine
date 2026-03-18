@@ -18,8 +18,8 @@ namespace HegelEngine::core
         void processInput();
         void renderFrame();
 
-        bool initTriangle();
-        void destroyTriangle();
+        bool initGeometry();
+        void destroyGeometry();
     
     private:
         GLFWwindow* m_window = nullptr;
@@ -29,5 +29,6 @@ namespace HegelEngine::core
         unsigned int m_shaderProgram = 0;
         unsigned int m_vao = 0;
         unsigned int m_vbo = 0;
+        unsigned int m_ebo = 0;
     };
 }
