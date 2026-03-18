@@ -33,4 +33,4 @@ namespace HegelEngine::core
 #define HE_APP_CRITICAL(...)		SPDLOG_LOGGER_CRITICAL(::HegelEngine::core::Log::clientLogger(), __VA_ARGS__)
 
 #define HE_CORE_FATAL(...)		HE_CORE_CRITICAL(__VA_ARGS__)
-#define HE_APP_FATAL(...)		HE_CORE_CRITICAL(__VA_ARGS__)
+#define HE_APP_FATAL(...)		HE_APP_CRITICAL(__VA_ARGS__)

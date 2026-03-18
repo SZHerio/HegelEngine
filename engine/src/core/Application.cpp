@@ -20,7 +20,7 @@ namespace HegelEngine::core
 
             if (length == 0 || length == MAX_PATH)
             {
-                HE_CORE_CRITICAL("Failed to execute a path!");
+                HE_CORE_CRITICAL("Failed to get executable path");
                 return {};
             }
 
@@ -164,7 +164,7 @@ namespace HegelEngine::core
     {
         if (!glfwInit())
         {
-            HE_CORE_CRITICAL("Failed to initialize GFLW!");
+            HE_CORE_CRITICAL("Failed to initialize GLFW");
             return false;
         }
 
@@ -176,7 +176,7 @@ namespace HegelEngine::core
         
         if (!m_window)
         {
-            HE_CORE_CRITICAL("Failed to create GFLW window!");
+            HE_CORE_CRITICAL("Failed to create GFLW window");
             glfwTerminate();
             return false;
         }
@@ -186,19 +186,19 @@ namespace HegelEngine::core
 
         if (!gladLoadGLLoader(reinterpret_cast<GLADloadproc>(glfwGetProcAddress)))
         {
-            HE_CORE_CRITICAL("Failed to initialize glad!");
+            HE_CORE_CRITICAL("Failed to initialize glad");
             return false;
         }
 
         glViewport(0,0,m_width, m_height);
         
-        HE_CORE_INFO("OpenGL was successflly initialized!");
+        HE_CORE_INFO("OpenGL was successfully initialized");
         HE_CORE_INFO("Version: {}", reinterpret_cast<const char*>(glGetString(GL_RENDERER)));
         HE_CORE_INFO("OpenGL version: {}", reinterpret_cast<const char*>(glGetString(GL_VERSION)));
 
         if(!initGeometry())
         {
-            HE_CORE_CRITICAL("Failed to initialize a geometry!");
+            HE_CORE_CRITICAL("Failed to initialize a geometry");
             return false;
         }
 
@@ -238,7 +238,7 @@ namespace HegelEngine::core
 
     bool Application::initGeometry()
     {
-        const float verticies[] =
+        const float vertices[] =
         {
             0.5f, 0.5f, 0.0f,
             0.5f, -0.5f, 0.0f,
@@ -259,7 +259,7 @@ namespace HegelEngine::core
         
         if (m_shaderProgram == 0)
         {
-            HE_CORE_CRITICAL("Failed to initialize a triangle!");
+            HE_CORE_CRITICAL("Failed to initialize a triangle");
             return false;
         }
 
@@ -270,7 +270,7 @@ namespace HegelEngine::core
         glBindVertexArray(m_vao);
 
         glBindBuffer(GL_ARRAY_BUFFER, m_vbo);
-        glBufferData(GL_ARRAY_BUFFER, sizeof(verticies), verticies, GL_STATIC_DRAW);
+        glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
 
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_ebo);
         glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
