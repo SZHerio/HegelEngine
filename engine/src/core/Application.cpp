@@ -9,6 +9,9 @@
 #include <filesystem>
 #include <windows.h>
 
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb_image.h"
+
 namespace HegelEngine::core
 {
     namespace
@@ -231,6 +234,12 @@ namespace HegelEngine::core
         glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
         glUseProgram(m_shaderProgram);
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, m_texture);
+
+        const int textureLocation = glGetUniformLocation(m_shaderProgram, "uTexture");
+        glUniform1i(textureLocation, 0);
+
         glBindVertexArray(m_vao);
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, nullptr);
         glfwSwapBuffers(m_window);
@@ -240,10 +249,10 @@ namespace HegelEngine::core
     {
         const float vertices[] =
         {
-            0.5f, 0.5f, 0.0f,
-            0.5f, -0.5f, 0.0f,
-            -0.5f, -0.5f, 0.0f,
-            -0.5f, 0.5f, 0.0f
+            0.5f, 0.5f, 0.0f, 1.0f, 1.0f, 
+            0.5f, -0.5f, 0.0f, 1.0f, 0.0f,
+            -0.5f, -0.5f, 0.0f, 0.0f, 0.0f,
+            -0.5f, 0.5f, 0.0f, 0.0f, 1.0f
         };
 
         const unsigned int indices[] = 
@@ -254,12 +263,13 @@ namespace HegelEngine::core
 
         const auto vertexShaderPath = getAssetPath(std::filesystem::path("shaders")/"basic.vert");
         const auto fragmentShaderPath = getAssetPath(std::filesystem::path("shaders") / "basic.frag");
+        const auto texturePath = getAssetPath(std::filesystem::path("textures") / "test.png");
 
         m_shaderProgram = createShaderProgramFromFiles(vertexShaderPath, fragmentShaderPath);
         
         if (m_shaderProgram == 0)
         {
-            HE_CORE_CRITICAL("Failed to initialize a triangle");
+            HE_CORE_CRITICAL("Failed to initialize a geometry");
             return false;
         }
 
@@ -275,11 +285,64 @@ namespace HegelEngine::core
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_ebo);
         glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
 
-        glVertexAttribPointer(0,3,GL_FLOAT, GL_FALSE, 3*sizeof(float), reinterpret_cast<void*>(0));
+        glVertexAttribPointer(0,3,GL_FLOAT, GL_FALSE, 5*sizeof(float), reinterpret_cast<void*>(0));
         glEnableVertexAttribArray(0);
+
+        glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), reinterpret_cast<void*>(3*sizeof(float)));
+        glEnableVertexAttribArray(1);
 
         glBindBuffer(GL_ARRAY_BUFFER, 0);
         glBindVertexArray(0);
+
+        HE_CORE_INFO("Texture path: {}", texturePath.string());
+        glGenTextures(1, &m_texture);
+        glBindTexture(GL_TEXTURE_2D, m_texture);
+
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_LINEAR_MIPMAP_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+        stbi_set_flip_vertically_on_load(true);
+
+        int width = 0;
+        int height = 0;
+        int channels = 0;
+        auto data = stbi_load(texturePath.string().c_str(), &width, &height, &channels, 0);
+
+        if (!data)
+        {
+            HE_CORE_CRITICAL("Cannot load a texture data: {}", texturePath.string());
+            return false;
+        }
+
+        GLenum format = GL_RGB;
+        
+        switch (channels)
+        {
+        case 1:
+            format = GL_RED;
+            break;
+
+        case 3:
+            format = GL_RGB;
+            break;
+
+        case 4:
+            format = GL_RGBA;
+            break;
+
+        default:
+            stbi_image_free(data);
+            HE_CORE_CRITICAL("Unsupportex texture channel colors");
+            return false;
+        }
+
+        glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format, GL_UNSIGNED_BYTE, data);
+        glGenerateMipmap(GL_TEXTURE_2D);
+
+        stbi_image_free(data);
+        glBindTexture(GL_TEXTURE_2D, 0);
 
         return true;
     }
@@ -308,6 +371,12 @@ namespace HegelEngine::core
         {
             glDeleteProgram(m_shaderProgram);
             m_shaderProgram = 0;
+        }
+
+        if (m_texture)
+        {
+            glDeleteTextures(1, &m_texture);
+            m_texture = 0;
         }
     }
 }
