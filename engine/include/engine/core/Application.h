@@ -30,5 +30,6 @@ namespace HegelEngine::core
         unsigned int m_vao = 0;
         unsigned int m_vbo = 0;
         unsigned int m_ebo = 0;
+        unsigned int m_texture = 0;
     };
 }
