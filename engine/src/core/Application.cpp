@@ -8,6 +8,8 @@
 #include "engine/core/Log.h"
 #include <filesystem>
 #include <windows.h>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
@@ -199,6 +201,8 @@ namespace HegelEngine::core
         HE_CORE_INFO("Version: {}", reinterpret_cast<const char*>(glGetString(GL_RENDERER)));
         HE_CORE_INFO("OpenGL version: {}", reinterpret_cast<const char*>(glGetString(GL_VERSION)));
 
+        glEnable(GL_DEPTH_TEST);
+
         if(!initGeometry())
         {
             HE_CORE_CRITICAL("Failed to initialize a geometry");
@@ -232,7 +236,7 @@ namespace HegelEngine::core
     void Application::renderFrame()
     {
         glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
-        glClear(GL_COLOR_BUFFER_BIT);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         glUseProgram(m_shaderProgram);
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, m_texture);
@@ -240,20 +244,90 @@ namespace HegelEngine::core
         const int textureLocation = glGetUniformLocation(m_shaderProgram, "uTexture");
         glUniform1i(textureLocation, 0);
 
+        glm::mat4 model = glm::mat4(1.0f);
+
+        model = glm::rotate(
+            model,
+            static_cast<float>(glfwGetTime())*glm::radians(30.0f),
+            glm::vec3(0.5f, 1.0f, 0.0f)
+        );
+
+        glm::mat4 view = glm::mat4(1.0f);
+        view = glm::translate(view, glm::vec3(0.0f, 0.0f, -3.0f));
+
+        glm::mat4 projection = glm::perspective(
+            glm::radians(45.0f),
+            static_cast<float>(m_width) / static_cast<float>(m_height),
+            0.1f,
+            100.0f
+        );
+
+        const int modelLocation = glGetUniformLocation(m_shaderProgram, "uModel");
+        const int viewLocation = glGetUniformLocation(m_shaderProgram, "uView");
+        const int projectionLocation = glGetUniformLocation(m_shaderProgram, "uProjection");
+
+        glUniformMatrix4fv(modelLocation, 1, GL_FALSE, glm::value_ptr(model));
+        glUniformMatrix4fv(viewLocation, 1, GL_FALSE, glm::value_ptr(view));
+        glUniformMatrix4fv(projectionLocation, 1, GL_FALSE, glm::value_ptr(projection));
+
         glBindVertexArray(m_vao);
-        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, nullptr);
+        glDrawArrays(GL_TRIANGLES, 0, 36);
         glfwSwapBuffers(m_window);
     }
 
     bool Application::initGeometry()
     {
         const float vertices[] =
-        {
-            0.5f, 0.5f, 0.0f, 1.0f, 1.0f, 
-            0.5f, -0.5f, 0.0f, 1.0f, 0.0f,
-            -0.5f, -0.5f, 0.0f, 0.0f, 0.0f,
-            -0.5f, 0.5f, 0.0f, 0.0f, 1.0f
-        };
+{
+        // positions            // tex coords
+        // front face
+        -0.5f, -0.5f,  0.5f,    0.0f, 0.0f,
+        0.5f, -0.5f,  0.5f,    1.0f, 0.0f,
+        0.5f,  0.5f,  0.5f,    1.0f, 1.0f,
+        0.5f,  0.5f,  0.5f,    1.0f, 1.0f,
+        -0.5f,  0.5f,  0.5f,    0.0f, 1.0f,
+        -0.5f, -0.5f,  0.5f,    0.0f, 0.0f,
+
+        // back face
+        -0.5f, -0.5f, -0.5f,    1.0f, 0.0f,
+        -0.5f,  0.5f, -0.5f,    1.0f, 1.0f,
+        0.5f,  0.5f, -0.5f,    0.0f, 1.0f,
+        0.5f,  0.5f, -0.5f,    0.0f, 1.0f,
+        0.5f, -0.5f, -0.5f,    0.0f, 0.0f,
+        -0.5f, -0.5f, -0.5f,    1.0f, 0.0f,
+
+        // left face
+        -0.5f,  0.5f,  0.5f,    1.0f, 1.0f,
+        -0.5f,  0.5f, -0.5f,    0.0f, 1.0f,
+        -0.5f, -0.5f, -0.5f,    0.0f, 0.0f,
+        -0.5f, -0.5f, -0.5f,    0.0f, 0.0f,
+        -0.5f, -0.5f,  0.5f,    1.0f, 0.0f,
+        -0.5f,  0.5f,  0.5f,    1.0f, 1.0f,
+
+        // right face
+        0.5f,  0.5f,  0.5f,    0.0f, 1.0f,
+        0.5f, -0.5f, -0.5f,    1.0f, 0.0f,
+        0.5f,  0.5f, -0.5f,    1.0f, 1.0f,
+        0.5f, -0.5f, -0.5f,    1.0f, 0.0f,
+        0.5f,  0.5f,  0.5f,    0.0f, 1.0f,
+        0.5f, -0.5f,  0.5f,    0.0f, 0.0f,
+
+        // bottom face
+        -0.5f, -0.5f, -0.5f,    0.0f, 1.0f,
+        0.5f, -0.5f, -0.5f,    1.0f, 1.0f,
+        0.5f, -0.5f,  0.5f,    1.0f, 0.0f,
+        0.5f, -0.5f,  0.5f,    1.0f, 0.0f,
+        -0.5f, -0.5f,  0.5f,    0.0f, 0.0f,
+        -0.5f, -0.5f, -0.5f,    0.0f, 1.0f,
+
+        // top face
+        -0.5f,  0.5f, -0.5f,    0.0f, 1.0f,
+        -0.5f,  0.5f,  0.5f,    0.0f, 0.0f,
+         0.5f,  0.5f,  0.5f,    1.0f, 0.0f,
+        0.5f,  0.5f,  0.5f,    1.0f, 0.0f,
+        0.5f,  0.5f, -0.5f,    1.0f, 1.0f,
+        -0.5f,  0.5f, -0.5f,    0.0f, 1.0f
+};
 
         const unsigned int indices[] = 
         {
@@ -275,15 +349,15 @@ namespace HegelEngine::core
 
         glGenVertexArrays(1, &m_vao);
         glGenBuffers(1, &m_vbo);
-        glGenBuffers(1, &m_ebo);
+        //glGenBuffers(1, &m_ebo);
 
         glBindVertexArray(m_vao);
 
         glBindBuffer(GL_ARRAY_BUFFER, m_vbo);
         glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
 
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_ebo);
-        glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
+        //glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_ebo);
+        //glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
 
         glVertexAttribPointer(0,3,GL_FLOAT, GL_FALSE, 5*sizeof(float), reinterpret_cast<void*>(0));
         glEnableVertexAttribArray(0);
@@ -349,11 +423,11 @@ namespace HegelEngine::core
 
     void Application::destroyGeometry()
     {
-        if (m_ebo)
+        /*if (m_ebo)
         {
             glDeleteBuffers(1, &m_ebo);
             m_ebo = 0;
-        }
+        }*/
 
         if (m_vbo)
         {
