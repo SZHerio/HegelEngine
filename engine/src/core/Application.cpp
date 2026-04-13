@@ -143,12 +143,68 @@ namespace HegelEngine::core
         }
     }
 
+    void Application::onMouseMoved(double xpos, double ypos)
+    {
+        if(m_firstMouse)
+        {
+            m_lastMouseX = static_cast<float>(xpos);
+            m_lastMouseY = static_cast<float>(ypos);
+            m_firstMouse = false;
+        }
+
+        float xoffset = static_cast<float>(xpos) - m_lastMouseX;
+        float yoffset = m_lastMouseY - static_cast<float>(ypos);
+
+        m_lastMouseX = static_cast<float>(xpos);
+        m_lastMouseY = static_cast<float>(ypos);
+
+        const float sensitivity =  0.1f;
+        xoffset *= sensitivity;
+        yoffset *= sensitivity;
+
+        m_yaw += xoffset;
+        m_pitch += yoffset;
+
+        if(m_pitch >= 89.0f)
+        {
+            m_pitch = 89.0f;
+        }
+
+        if(m_pitch < -89.0f)
+        {
+            m_pitch = -89.0f;
+        }
+
+        updateCameraVectors();
+    }
+
+    void Application::updateCameraVectors()
+    {
+        glm::vec3 front;
+        front.x = cos(glm::radians(m_yaw));
+        front.y = sin(glm::radians(m_pitch));
+        front.z = sin(glm::radians(m_yaw)) * cos(glm::radians(m_pitch));
+
+        m_cameraFront = glm::normalize(front);
+    }
+
+    void Application::onFrameBufferResized(int width, int height)
+    {
+        m_width = width;
+        m_height = height;
+        glViewport(0, 0, width, height);
+    }
+
     void Application::run()
     {
         if (!init()) return;
 
         while (!glfwWindowShouldClose(m_window))
         {
+            const float currectFrame = static_cast<float>(glfwGetTime());
+            m_deltaTime = currectFrame - m_lastFrame;
+            m_lastFrame = currectFrame;
+
             processInput();
             renderFrame();
             glfwPollEvents();
@@ -164,6 +220,8 @@ namespace HegelEngine::core
     {
         shutdown();
     }
+
+
 
     bool Application::init()
     {
@@ -188,6 +246,36 @@ namespace HegelEngine::core
 
         glfwMakeContextCurrent(m_window);
         glfwSetFramebufferSizeCallback(m_window, framebufferSizeCallback);
+        glfwSetWindowUserPointer(m_window, this);
+
+        glfwSetFramebufferSizeCallback(
+            m_window,
+            [](GLFWwindow* window, int width, int height)
+            {
+                auto* app = static_cast<Application*>(glfwGetWindowUserPointer(window));
+                
+                if(app)
+                {
+                    app->onFrameBufferResized(width, height);
+                }
+            }
+
+        );
+
+        glfwSetCursorPosCallback(
+            m_window,
+            [](GLFWwindow* window, double xpos, double ypos)
+            {
+                auto* app = static_cast<Application*>(glfwGetWindowUserPointer(window));
+                
+                if(app)
+                {
+                    app->onMouseMoved(xpos, ypos);
+                }
+            }
+        );
+
+        glfwSetInputMode(m_window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
         if (!gladLoadGLLoader(reinterpret_cast<GLADloadproc>(glfwGetProcAddress)))
         {
@@ -231,6 +319,39 @@ namespace HegelEngine::core
         {
             glfwSetWindowShouldClose(m_window, true);
         }
+
+        const float cameraSpeed = 2.5f * m_deltaTime;
+        const glm::vec3 right = glm::normalize(glm::cross(m_cameraFront, m_cameraUp));
+
+        if (glfwGetKey(m_window, GLFW_KEY_W) == GLFW_PRESS)
+        {
+            m_cameraPos += m_cameraFront * cameraSpeed;
+        }
+
+        if (glfwGetKey(m_window, GLFW_KEY_S) == GLFW_PRESS)
+        {
+            m_cameraPos -= m_cameraFront * cameraSpeed;
+        }
+
+        if (glfwGetKey(m_window, GLFW_KEY_A) == GLFW_PRESS)
+        {
+            m_cameraPos -= right * cameraSpeed;
+        }
+
+        if (glfwGetKey(m_window, GLFW_KEY_D) == GLFW_PRESS)
+        {
+            m_cameraPos += right * cameraSpeed;
+        }
+
+        if (glfwGetKey(m_window, GLFW_KEY_SPACE) == GLFW_PRESS)
+        {
+            m_cameraPos += m_cameraUp * cameraSpeed;
+        }
+
+        if (glfwGetKey(m_window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS)
+        {
+            m_cameraPos -= m_cameraUp * cameraSpeed;
+        }
     }
 
     void Application::renderFrame()
@@ -246,13 +367,14 @@ namespace HegelEngine::core
 
         glm::mat4 model = glm::mat4(1.0f);
 
-        model = glm::rotate(
-            model,
-            static_cast<float>(glfwGetTime())*glm::radians(30.0f),
-            glm::vec3(0.5f, 1.0f, 0.0f)
+        model = glm::mat4(1.0f);
+
+        glm::mat4 view = glm::lookAt(
+            m_cameraPos,
+            m_cameraPos + m_cameraFront,
+            m_cameraUp
         );
 
-        glm::mat4 view = glm::mat4(1.0f);
         view = glm::translate(view, glm::vec3(0.0f, 0.0f, -3.0f));
 
         glm::mat4 projection = glm::perspective(
@@ -349,15 +471,12 @@ namespace HegelEngine::core
 
         glGenVertexArrays(1, &m_vao);
         glGenBuffers(1, &m_vbo);
-        //glGenBuffers(1, &m_ebo);
+
 
         glBindVertexArray(m_vao);
 
         glBindBuffer(GL_ARRAY_BUFFER, m_vbo);
         glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-
-        //glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_ebo);
-        //glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
 
         glVertexAttribPointer(0,3,GL_FLOAT, GL_FALSE, 5*sizeof(float), reinterpret_cast<void*>(0));
         glEnableVertexAttribArray(0);
@@ -423,12 +542,6 @@ namespace HegelEngine::core
 
     void Application::destroyGeometry()
     {
-        /*if (m_ebo)
-        {
-            glDeleteBuffers(1, &m_ebo);
-            m_ebo = 0;
-        }*/
-
         if (m_vbo)
         {
             glDeleteBuffers(1, &m_vbo);
